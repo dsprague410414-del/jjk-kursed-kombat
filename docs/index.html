@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JJK: Cursed Kombat</title>
+  <style>
+    :root {
+      --bg: #0a0710;
+      --panel: rgba(17, 12, 26, 0.92);
+      --panel-border: rgba(150, 100, 255, 0.8);
+      --accent: #ff2b4a;
+      --accent-2: #a855f7;
+      --gold: #ffd166;
+      --text: #f3f4f6;
+      --muted: #d0d5e0;
+      --shadow: rgba(255, 43, 74, 0.6);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Impact, "Arial Black", Arial, sans-serif;
+      letter-spacing: 0.04em;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    #game-shell {
+      position: relative;
+      width: min(960px, 100%);
+      aspect-ratio: 16 / 9;
+      background: #05060a;
+      border: 2px solid var(--panel-border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.6);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    .panel {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(8, 6, 14, 0.92);
+      text-align: center;
+      padding: 20px 12px;
+      z-index: 20;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.3rem, 5.5vw, 4rem);
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      text-shadow: 0 0 18px var(--shadow);
+    }
+
+    .title-small {
+      font-size: 0.9rem;
+      color: var(--muted);
+      opacity: 0.9;
+      letter-spacing: 0.08em;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 2px solid rgba(155, 128, 220, 0.9);
+      background: rgba(31, 25, 45, 0.95);
+      color: var(--text);
+      font: inherit;
+      letter-spacing: 0.08em;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+    }
+
+    button.is-active {
+      border-color: var(--accent);
+      background: rgba(76, 12, 24, 0.95);
+      box-shadow: 0 0 14px var(--shadow);
+    }
+
+    #fightBtn {
+      background: var(--accent);
+      border-color: var(--accent);
+      font-size: 1.1rem;
+      padding: 10px 32px;
+    }
+
+    .small {
+      max-width: 700px;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    #toast {
+      position: absolute;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      background: rgba(12, 10, 18, 0.96);
+      border: 1px solid rgba(255, 43, 74, 0.7);
+      box-shadow: 0 0 18px rgba(255, 43, 74, 0.35);
+      z-index: 30;
+      padding: 10px 18px;
+      border-radius: 999px;
+      color: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+    }
+
+    #toast.visible {
+      opacity: 1;
+    }
+
+    .panel h2 {
+      margin: 0;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+    }
+
+    .card-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      width: min(800px, 90%);
+      margin-bottom: 8px;
+    }
+
+    .quest-card,
+    .secret-card {
+      background: rgba(18, 24, 36, 0.9);
+      border: 1px solid rgba(170, 120, 255, 0.8);
+      border-radius: 10px;
+      padding: 12px;
+      min-width: 220px;
+      max-width: 260px;
+      text-align: left;
+    }
+
+    .quest-card strong,
+    .secret-card strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--gold);
+      font-size: 1rem;
+    }
+
+    .quest-card small,
+    .secret-card small {
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-shell">
+    <canvas id="c" width="960" height="540"></canvas>
+
+    <div id="menu" class="panel">
+      <h1>JJK: CURSED KOMBAT</h1>
+      <div class="title-small">PLAYER 1</div>
+      <div id="p1-select" class="row"></div>
+      <div class="title-small">PLAYER 2</div>
+      <div id="p2-select" class="row"></div>
+      <div class="title-small">MAP</div>
+      <div id="map-select" class="row"></div>
+      <div class="row">
+        <button id="modeBtn" type="button">MODE: VS CPU</button>
+        <button id="randomBtn" type="button">RANDOMIZE</button>
+        <button id="questBtn" type="button">QUESTS</button>
+        <button id="fightBtn" type="button">FIGHT!</button>
+      </div>
+      <div class="small">
+        P1: A/D move · W jump · S block · F punch · G kick · H special · R/T/Y skills · V ULT<br />
+        P2: ←/→ move · ↑ jump · ↓ block · , punch · . kick · / special
+      </div>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <div id="quests" class="panel hidden">
+      <h2>QUESTS</h2>
+      <div id="quest-list" class="card-list"></div>
+      <button type="button" id="closeQuestBtn">BACK</button>
+    </div>
+
+    <div id="secret" class="panel hidden">
+      <h2>SEALED FIGHTERS</h2>
+      <div id="secret-list" class="card-list"></div>
+      <button type="button" id="closeSecretBtn">BACK</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const ui = {
+      menu: document.getElementById('menu'),
+      toast: document.getElementById('toast'),
+      quests: document.getElementById('quests'),
+      secret: document.getElementById('secret'),
+      modeBtn: document.getElementById('modeBtn'),
+      randomBtn: document.getElementById('randomBtn'),
+      fightBtn: document.getElementById('fightBtn'),
+      questBtn: document.getElementById('questBtn'),
+      closeQuestBtn: document.getElementById('closeQuestBtn'),
+      closeSecretBtn: document.getElementById('closeSecretBtn'),
+      p1Select: document.getElementById('p1-select'),
+      p2Select: document.getElementById('p2-select'),
+      mapSelect: document.getElementById('map-select'),
+      questList: document.getElementById('quest-list'),
+      secretList: document.getElementById('secret-list')
+    };
+
+    const KEYS = {};
+    const fighters = {
+      gojo: { name: 'GOJO', color: '#b46bff', accent: '#7aa8ff' },
+      sukuna: { name: 'SUKUNA', color: '#ff2030', accent: '#ff8a00' },
+      itadori: { name: 'ITADORI', color: '#3fd0ff', accent: '#ff9aa8' },
+      megumi: { name: 'MEGUMI', color: '#8a8aff', accent: '#7db6ff' },
+      nanami: { name: 'NANAMI', color: '#ffc933', accent: '#d9a400' },
+      mahito: { name: 'MAHITO', color: '#9be8c0', accent: '#7ad0ff' },
+      yuta: { name: 'YUTA', color: '#ff5fd0', accent: '#f8d5ff' },
+      dabura: { name: 'DABURA', color: '#ff5a3a', accent: '#f7c27a' },
+      heian: { name: 'HEIAN SUKUNA', color: '#ff2030', accent: '#ffcdb4' },
+      modulo: { name: 'MODULO YUJI', color: '#ff8a00', accent: '#ffdca3' },
+      mahoraga: { name: 'MAHORAGA', color: '#ffe28a', accent: '#d9a800' },
+      royale: { name: 'CLASH ADDICT', color: '#ff3fa0', accent: '#ffd166' }
+    };
+
+    const state = {
+      mode: 'cpu',
+      mapIndex: 0,
+      selected: ['gojo', 'sukuna'],
+      battle: false,
+      fighters: [],
+      winner: null,
+      quests: { modulo: false, heian: false, royal: false }
+    };
+
+    const maps = ['SHIBUYA', 'CURSED SHRINE'];
+
+    function safePanel(panel, show) {
+      if (!panel) return;
+      panel.classList.toggle('hidden', !show);
+    }
+
+    function setToast(message) {
+      if (!ui.toast) return;
+      ui.toast.textContent = message;
+      ui.toast.classList.add('visible');
+      clearTimeout(ui.toast.timer);
+      ui.toast.timer = setTimeout(() => ui.toast.classList.remove('visible'), 2400);
+    }
+
+    function buildRoster(containerId, index) {
+      const container = containerId === 'p1-select' ? ui.p1Select : ui.p2Select;
+      if (!container) return;
+      container.innerHTML = '';
+      Object.keys(fighters).forEach((key) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = fighters[key].name;
+        btn.classList.toggle('is-active', state.selected[index] === key);
+        btn.addEventListener('click', () => {
+          state.selected[index] = key;
+          buildRoster('p1-select', 0);
+          buildRoster('p2-select', 1);
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function renderMapButtons() {
+      if (!ui.mapSelect) return;
+      ui.mapSelect.innerHTML = '';
+      maps.forEach((name, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = name;
+        btn.classList.toggle('is-active', i === state.mapIndex);
+        btn.addEventListener('click', () => {
+          state.mapIndex = i;
+          renderMapButtons();
+        });
+        ui.mapSelect.appendChild(btn);
+      });
+    }
+
+    function resetSelectors() {
+      buildRoster('p1-select', 0);
+      buildRoster('p2-select', 1);
+      renderMapButtons();
+      if (ui.modeBtn) {
+        ui.modeBtn.textContent = 'MODE: ' + (state.mode === 'cpu' ? 'VS CPU' : '2 PLAYER');
+      }
+    }
+
+    function randomize() {
+      const keyList = Object.keys(fighters);
+      state.selected[0] = keyList[Math.floor(Math.random() * keyList.length)];
+      state.selected[1] = keyList[Math.floor(Math.random() * keyList.length)];
+      state.mapIndex = Math.floor(Math.random() * maps.length);
+      resetSelectors();
+    }
+
+    function populateQuests() {
+      if (!ui.questList) return;
+      const list = [
+        { title: 'THE MODULO TRIAL', text: 'Win a match as Itadori.' },
+        { title: 'KING OF CURSES', text: 'Win a round as Sukuna in a duel.' },
+        { title: 'SEAL BREAKER', text: 'Unlock a hidden fighter from the prison realm.' }
+      ];
+      ui.questList.innerHTML = list.map((q) => `
+        <div class="quest-card">
+          <strong>${q.title}</strong>
+          <small>${q.text}</small>
+        </div>
+      `).join('');
+    }
+
+    function populateSecret() {
+      if (!ui.secretList) return;
+      const list = [
+        { title: 'DABURA', text: 'Ancient curse specialist from the sealed realm.' },
+        { title: 'MAHORAGA', text: 'Adaptive divine weapon with overwhelming resilience.' },
+        { title: 'ROYALE', text: 'Mobility-heavy duelist with explosive pressure.' }
+      ];
+      ui.secretList.innerHTML = list.map((q) => `
+        <div class="secret-card" data-key="${q.title.toLowerCase()}">
+          <strong>${q.title}</strong>
+          <small>${q.text}</small>
+        </div>
+      `).join('');
+
+      ui.secretList.querySelectorAll('.secret-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          const key = card.getAttribute('data-key');
+          if (key === 'dabura') state.selected[0] = 'dabura';
+          if (key === 'mahoraga') state.selected[1] = 'mahoraga';
+          if (key === 'royale') state.selected[0] = 'royale';
+          resetSelectors();
+          safePanel(ui.secret, false);
+          safePanel(ui.menu, true);
+        });
+      });
+    }
+
+    function openQuests() {
+      safePanel(ui.menu, false);
+      safePanel(ui.quests, true);
+      populateQuests();
+    }
+
+    function closeQuests() {
+      safePanel(ui.quests, false);
+      safePanel(ui.menu, true);
+    }
+
+    function openSecret() {
+      safePanel(ui.menu, false);
+      safePanel(ui.secret, true);
+      populateSecret();
+    }
+
+    function closeSecret() {
+      safePanel(ui.secret, false);
+      safePanel(ui.menu, true);
+    }
+
+    function makeFighter(character, side, aiControlled) {
+      return {
+        name: fighters[character].name,
+        color: fighters[character].color,
+        accent: fighters[character].accent,
+        character,
+        side,
+        x: side === 'left' ? 220 : 740,
+        y: 390,
+        vy: 0,
+        hp: 100,
+        maxHp: 100,
+        dir: side === 'left' ? 1 : -1,
+        ai: aiControlled,
+        block: false,
+        attackLock: false,
+        flash: 0,
+        alive: true,
+        control: side === 'left' ? 'p1' : 'p2'
+      };
+    }
+
+    function spawnBattle() {
+      const aiRight = state.mode === 'cpu';
+      state.fighters = [
+        makeFighter(state.selected[0], 'left', false),
+        makeFighter(state.selected[1], 'right', aiRight)
+      ];
+      state.battle = true;
+      state.winner = null;
+      safePanel(ui.menu, false);
+      safePanel(ui.quests, false);
+      safePanel(ui.secret, false);
+      setToast('FIGHT!');
+    }
+
+    function applyDamage(attacker, defender) {
+      if (!attacker || !defender || !defender.alive) return;
+      const base = attacker.character === 'sukuna' ? 18 : 12;
+      const blocked = defender.block && Math.sign(defender.x - attacker.x) === defender.dir;
+      const dmg = blocked ? Math.max(2, Math.round(base * 0.25)) : base;
+      defender.hp = Math.max(0, defender.hp - dmg);
+      defender.flash = 6;
+      if (defender.hp <= 0) defender.alive = false;
+      setToast(`${attacker.name} hit for ${dmg}`);
+    }
+
+    function updateAi(aiFighter, enemy) {
+      if (!aiFighter || !enemy || !enemy.alive) return;
+      const dx = enemy.x - aiFighter.x;
+      aiFighter.x += Math.sign(dx) * 1.7;
+      aiFighter.dir = dx >= 0 ? 1 : -1;
+      if (Math.abs(dx) < 110) {
+        if (Math.random() < 0.04) {
+          applyDamage(aiFighter, enemy);
+        }
+      }
+      if (Math.random() < 0.006) {
+        aiFighter.vy = -12;
+      }
+    }
+
+    function updateBattle() {
+      if (!state.battle || state.fighters.length < 2) return;
+      const [left, right] = state.fighters;
+
+      if (left && !left.ai) {
+        if (KEYS.KeyA) left.x -= 2.8;
+        if (KEYS.KeyD) left.x += 2.8;
+        if (KEYS.KeyW && left.y >= 390) left.vy = -14;
+        left.block = !!KEYS.KeyS;
+        left.dir = left.x < right.x ? 1 : -1;
+        if (KEYS.KeyF && !left.attackLock) {
+          left.attackLock = true;
+          if (Math.abs(right.x - left.x) < 90) applyDamage(left, right);
+        }
+        if (KEYS.KeyG && !left.attackLock) {
+          left.attackLock = true;
+          if (Math.abs(right.x - left.x) < 120) applyDamage(left, right);
+        }
+      }
+
+      if (right && !right.ai) {
+        if (KEYS.ArrowLeft) right.x -= 2.8;
+        if (KEYS.ArrowRight) right.x += 2.8;
+        if (KEYS.ArrowUp && right.y >= 390) right.vy = -14;
+        right.block = !!KEYS.ArrowDown;
+        right.dir = right.x < left.x ? 1 : -1;
+        if (KEYS.Comma && !right.attackLock) {
+          right.attackLock = true;
+          if (Math.abs(left.x - right.x) < 90) applyDamage(right, left);
+        }
+        if (KEYS.Period && !right.attackLock) {
+          right.attackLock = true;
+          if (Math.abs(left.x - right.x) < 120) applyDamage(right, left);
+        }
+      }
+
+      if (left && left.ai) updateAi(left, right);
+      if (right && right.ai) updateAi(right, left);
+
+      [left, right].forEach((fighter) => {
+        if (!fighter) return;
+        fighter.vy += 0.7;
+        fighter.y += fighter.vy;
+        if (fighter.y >= 390) { fighter.y = 390; fighter.vy = 0; }
+        fighter.x = Math.max(60, Math.min(900, fighter.x));
+        if (fighter.flash > 0) fighter.flash--;
+        if (!KEYS.KeyF && !KEYS.KeyG && left) left.attackLock = false;
+        if (!KEYS.Comma && !KEYS.Period && right) right.attackLock = false;
+      });
+
+      if (!left || !left.alive || !right || !right.alive) {
+        const winner = left && left.alive ? left : right && right.alive ? right : null;
+        state.battle = false;
+        state.winner = winner ? winner.name : 'DRAW';
+        setToast(winner ? `${winner.name} wins!` : 'DRAW!');
+        safePanel(ui.menu, true);
+        resetSelectors();
+      }
+    }
+
+    function drawBackground() {
+      if (!ctx) return;
+      const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      g.addColorStop(0, '#180d28');
+      g.addColorStop(0.7, '#310c2b');
+      g.addColorStop(1, '#110c18');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#1a1a2e';
+      for (let i = 0; i < 18; i++) {
+        const h = 60 + ((i * 31) % 120);
+        ctx.fillRect(i * 52 + 12, canvas.height - h, 28, h);
+      }
+
+      ctx.fillStyle = '#20162d';
+      ctx.fillRect(0, canvas.height - 46, canvas.width, 46);
+      ctx.fillStyle = '#8fd0ff';
+      ctx.fillRect(0, canvas.height - 48, canvas.width, 3);
+    }
+
+    function drawFighter(fighter) {
+      if (!fighter || !fighter.alive || !ctx) return;
+      const x = fighter.x;
+      const y = fighter.y;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(fighter.dir, 1);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(0, 26, 34, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = fighter.color;
+      ctx.fillRect(-18, -68, 36, 62);
+      ctx.fillStyle = fighter.accent;
+      ctx.fillRect(-14, -28, 28, 8);
+
+      ctx.fillStyle = '#f0d0c4';
+      ctx.beginPath();
+      ctx.arc(0, -84, 15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#101010';
+      ctx.beginPath();
+      ctx.arc(0, -92, 17, Math.PI, 0);
+      ctx.fill();
+
+      ctx.strokeStyle = fighter.color;
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(18, -52);
+      ctx.lineTo(32, -38);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-18, -52);
+      ctx.lineTo(-32, -38);
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-15, -72, 30, 6);
+      ctx.restore();
+
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(x - 55, y - 112, 110, 12);
+      ctx.fillStyle = '#ff2b4a';
+      ctx.fillRect(x - 55, y - 112, (fighter.hp / fighter.maxHp) * 110, 12);
+      ctx.fillStyle = '#fff';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(fighter.name, x, y - 122);
+    }
+
+    function drawArena() {
+      drawBackground();
+      if (state.fighters.length === 2) {
+        state.fighters.forEach(drawFighter);
+      }
+    }
+
+    function loop() {
+      updateBattle();
+      drawArena();
+      requestAnimationFrame(loop);
+    }
+
+    function bindControls() {
+      window.addEventListener('keydown', (event) => {
+        KEYS[event.code] = true;
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(event.code)) {
+          event.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', (event) => {
+        KEYS[event.code] = false;
+      });
+    }
+
+    function initUi() {
+      if (!canvas || !ctx) return;
+      safePanel(ui.menu, true);
+      safePanel(ui.quests, false);
+      safePanel(ui.secret, false);
+      resetSelectors();
+      populateQuests();
+      populateSecret();
+
+      if (ui.modeBtn) {
+        ui.modeBtn.addEventListener('click', () => {
+          state.mode = state.mode === 'cpu' ? 'pvp' : 'cpu';
+          resetSelectors();
+        });
+      }
+
+      if (ui.randomBtn) ui.randomBtn.addEventListener('click', randomize);
+      if (ui.fightBtn) ui.fightBtn.addEventListener('click', spawnBattle);
+      if (ui.questBtn) ui.questBtn.addEventListener('click', openQuests);
+      if (ui.closeQuestBtn) ui.closeQuestBtn.addEventListener('click', closeQuests);
+      if (ui.closeSecretBtn) ui.closeSecretBtn.addEventListener('click', closeSecret);
+      bindControls();
+      requestAnimationFrame(loop);
+    }
+
+    initUi();
+  </script>
+</body>
+</html>
